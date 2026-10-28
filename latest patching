@@ -1,0 +1,64 @@
+---
+- name: Multi-OS Security Patching with Controlled Reboot and Service Verification
+  hosts: all
+  become: yes
+  gather_facts: yes
+  tasks:
+
+    # ==========================================
+    # STAGE 1: PATCHING OPERATIONS
+    # ==========================================
+    
+    - name: Update RedHat/AlmaLinux packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+      register: dnf_update_result
+      when: ansible_os_family == "RedHat"
+
+    - name: Update Debian/Ubuntu package cache and upgrade packages
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+      register: apt_update_result
+      when: ansible_os_family == "Debian"
+
+    # ==========================================
+    # STAGE 2: CONDITIONAL REBOOT MECHANISMS
+    # ==========================================
+    
+    - name: Trigger Reboot if AlmaLinux packages changed
+      ansible.builtin.reboot:
+        msg: "Reboot triggered by Semaphore UI patching task."
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 2
+        post_reboot_delay: 10
+        test_command: whoami
+      when: ansible_os_family == "RedHat" and dnf_update_result.changed
+
+    - name: Trigger Reboot if Ubuntu packages changed
+      ansible.builtin.reboot:
+        msg: "Reboot triggered by Semaphore UI patching task."
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 2
+        post_reboot_delay: 10
+        test_command: whoami
+      when: ansible_os_family == "Debian" and apt_update_result.changed
+
+    # ==========================================
+    # STAGE 3: POST-REBOOT SERVICE ENFORCEMENT
+    # ==========================================
+    
+    - name: Enforce and verify essential system services are running
+      ansible.builtin.systemd:
+        name: sshd
+        state: started
+        enabled: yes
+      register: service_status
+
+    - name: Output Service Verification Details
+      ansible.builtin.debug:
+        msg: "Service 'sshd' status on {{ inventory_hostname }} is active and enabled."
+      when: service_status.status.ActiveState == "active"
