@@ -34,7 +34,7 @@
         reboot_timeout: 300
         pre_reboot_delay: 2
         post_reboot_delay: 10
-        test_command: whoami
+        test_command: sudo whoami
       when: ansible_os_family == "RedHat" and dnf_update_result.changed
 
     - name: Trigger Reboot if Ubuntu packages changed
@@ -44,7 +44,7 @@
         reboot_timeout: 300
         pre_reboot_delay: 2
         post_reboot_delay: 10
-        test_command: whoami
+        test_command: sudo whoami
       when: ansible_os_family == "Debian" and apt_update_result.changed
 
     # ==========================================
